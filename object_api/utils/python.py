@@ -1,5 +1,7 @@
 import inspect
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, Optional, TypeVar
+
+from glom import glom
 
 
 def attr_is_list(class_type: object, attr_name: str) -> bool:
@@ -245,4 +247,18 @@ func = callable[[Targs], Tretrn]
 
 
 class Decorator(Generic[Targs, Tretrn], callable[[func], func]):
-    ...
+    pass
+
+
+def get_in_classes(classes, glom: str) -> Optional[Any]:
+    for cls in classes:
+        try:
+            return glom(cls, glom)
+        except (KeyError, AttributeError, IndexError):
+            pass
+    return None
+
+
+def subclasses_recursive(cls: type) -> list[type]:
+    subclasses = cls.__subclasses__()
+    return subclasses + [g for s in subclasses for g in subclasses_recursive(s)]

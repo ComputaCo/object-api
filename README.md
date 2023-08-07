@@ -9,6 +9,7 @@ ObjectAPI provides a concise negative-boilerplate paradigm for creating full-sta
 - Automatic CRUD routes
 - Scheduled service methods
 - Managed DB sessions for service methods and for each request
+- `__post_init__` for entity classes
 
 ## Installation
 
@@ -19,16 +20,56 @@ pip install object-api
 ## Usage
 
 ```python
-from object_api import App, Entity, RouterBuilder, ServiceBuilder
+from object_api.entity import Entity
+from object_api.app import App
+from object_api.model_variants import (
+    create_variant,
+    read_variant,
+    update_variant,
+    db_variant,
+)
+from object_api import router
+from object_api.router import route, get, post, put, delete, patch, head, options
+from object_api.servicemethod import servicemethod
+```
 
-app = App()
+
+```python
+from object_api import (
+    App,
+    Entity,
+    create_variant,
+    read_variant,
+    update_variant,
+    db_variant,
+    router,
+    route,
+    get,
+    post,
+    put,
+    delete,
+    patch,
+    head,
+    options,
+    servicemethod
+)
+
+
+@create_variant()
+@read_variant()
+@update_variant()
+@db_variant(include=["passwd_hash"])
+class User(Entity):
+    name: str
+    passwd_hash: str = Field(exclude=True)
+    birthdate: datetime
+    
+    @property
+    def age(self) -> timedelta:
+        return datetime.now() - self.birthdate
+
 
 class User(Entity):
-    class Meta:
-        service = ServiceBuilder()
-        router = RouterBuilder()
-
-        new_private = ["pass"]
 
     name: str
     pass: str
@@ -58,6 +99,10 @@ app.run()
 ## Documentation
 
 <https://github.com/ComputaCo/object-api>
+
+## Roadmap
+
+[] Make the Create/Read/UpdateModel's automatically convert foreign lists/dicts to just their ID's
 
 ## License
 

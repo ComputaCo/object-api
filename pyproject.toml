@@ -16,6 +16,9 @@ pydantic = ">=1.8.2,<2.0.0"
 inspect-mate-pp = "^0.0.4"
 stringcase = "^1.2.0"
 scheduler = "^0.8.4"
+glom = "^23.3.0"
+python-exports = "^1.1.0"
+uvicorn = "^0.23.2"
 
 
 [tool.poetry.group.dev.dependencies]

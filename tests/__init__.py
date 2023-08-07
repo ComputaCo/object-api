@@ -2,28 +2,28 @@ import pytest
 
 
 def import_entity():
-    from object_api.entity import Entity
+    from object_api.entity import AbstractEntity
 
 
 def make_entity():
-    from object_api.entity import Entity
+    from object_api.entity import AbstractEntity
 
-    class SubEntity(Entity):
+    class SubEntity(AbstractEntity):
         pass
 
 
 def make_entity_with_fields():
-    from object_api.entity import Entity
+    from object_api.entity import AbstractEntity
 
-    class SubEntity(Entity):
+    class SubEntity(AbstractEntity):
         foo: str
         bar: int
 
 
 def make_entity_with_meta():
-    from object_api.entity import Entity
+    from object_api.entity import AbstractEntity
 
-    class SubEntity(Entity):
+    class SubEntity(AbstractEntity):
         class Meta:
             pass
 
@@ -31,19 +31,19 @@ def make_entity_with_meta():
 
 
 def make_entity_with_meta_that_subs_base_meta():
-    from object_api.entity import Entity
+    from object_api.entity import AbstractEntity
 
-    class SubEntity(Entity):
-        class Meta(Entity.Meta):
+    class SubEntity(AbstractEntity):
+        class Meta(AbstractEntity.Meta):
             pass
 
         pass
 
 
 def make_entity_with_private_fields():
-    from object_api.entity import Entity
+    from object_api.entity import AbstractEntity
 
-    class SubEntity(Entity):
+    class SubEntity(AbstractEntity):
         class Meta:
             new_private_fields = ["foo"]
 
@@ -65,10 +65,10 @@ def import_router_builder():
 
 
 def make_router_builder():
-    from object_api.entity import Entity
+    from object_api.entity import AbstractEntity
     from object_api.router_builder import RouterBuilder
 
-    class SubEntity(Entity):
+    class SubEntity(AbstractEntity):
         class Meta:
             router = RouterBuilder()
 
@@ -76,10 +76,10 @@ def make_router_builder():
 
 
 def add_route():
-    from object_api.entity import Entity
+    from object_api.entity import AbstractEntity
     from object_api.router_builder import RouterBuilder
 
-    class SubEntity(Entity):
+    class SubEntity(AbstractEntity):
         class Meta:
             router = RouterBuilder()
 
@@ -89,10 +89,10 @@ def add_route():
 
 
 def build_router():
-    from object_api.entity import Entity
+    from object_api.entity import AbstractEntity
     from object_api.router_builder import RouterBuilder
 
-    class SubEntity(Entity):
+    class SubEntity(AbstractEntity):
         class Meta:
             router = RouterBuilder()
 
@@ -108,10 +108,10 @@ def import_service_builder():
 
 
 def make_service_builder():
-    from object_api.entity import Entity
+    from object_api.entity import AbstractEntity
     from object_api.service_builder import ServiceBuilder
 
-    class SubEntity(Entity):
+    class SubEntity(AbstractEntity):
         class Meta:
             service = ServiceBuilder()
 
@@ -119,10 +119,10 @@ def make_service_builder():
 
 
 def register_service_method():
-    from object_api.entity import Entity
+    from object_api.entity import AbstractEntity
     from object_api.service_builder import ServiceBuilder
 
-    class SubEntity(Entity):
+    class SubEntity(AbstractEntity):
         class Meta:
             service = ServiceBuilder()
 
@@ -132,10 +132,10 @@ def register_service_method():
 
 
 def build_service_builder():
-    from object_api.entity import Entity
+    from object_api.entity import AbstractEntity
     from object_api.service_builder import ServiceBuilder
 
-    class SubEntity(Entity):
+    class SubEntity(AbstractEntity):
         class Meta:
             service = ServiceBuilder()
 
