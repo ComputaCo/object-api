@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "object-api"
+version = "0.1.0"
+description = ""
+authors = ["Jacob Valdez <jacobfv123@gmail.com>"]
+readme = "README.md"
+packages = [{include = "object_api"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+httpx = "^0.24.1"
+black = "^23.7.0"
+fastapi = "^0.101.0"
+sqlmodel = "^0.0.8"
+pydantic = ">=1.8.2,<2.0.0"
+inspect-mate-pp = "^0.0.4"
+stringcase = "^1.2.0"
+scheduler = "^0.8.4"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
