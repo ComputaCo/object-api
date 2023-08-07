@@ -5,6 +5,8 @@ from functools import wraps
 import inspect
 from typing import Generator
 
+from scheduler import Scheduler
+from scheduler.threading.job import Job
 from pydantic import BaseModel
 import inspect_mate_pp
 from sqlmodel import Field, SQLModel
@@ -22,19 +24,22 @@ class ServiceBuilder:
         interval: timedelta or None = None
         last_executed: timedelta or None = Field(None, init=False)
         app: App = Field(None, init=False)
+        scheduler_job: Job = Field(None, init=False)
 
-    parents: list[ServiceBuilder] = []
+    parent_service_builders: list[ServiceBuilder] = []
 
     _servicemethod_protos: list[ProtoServiceMethod] = []
 
     @property
     def servicemethod_protos(self) -> list[ProtoServiceMethod]:
         return MultiList(
-            self._servicemethod_protos, *(p.servicemethod_protos for p in self.parents)
+            self._servicemethod_protos,
+            *(p.servicemethod_protos for p in self.parent_service_builders),
         )
 
     def servicemethod(
         self,
+        *,
         startup: bool = False,
         shutdown: bool = False,
         interval: timedelta or None = None,
@@ -68,6 +73,22 @@ class ServiceBuilder:
         ]
 
     def build_services(self, entity_class: type[Entity]):
+        """Prepares services for the subclass."""
+
+        # Get all parent service builders from the entity_class.Meta.parent and
+        # assign them to self.parent_service_builders
+        # This way the router will inherit all the routes from the parent routers
+        # 1. Get all parents of entity_class up to Entity
+        parents = inspect.getmro(entity_class)
+        parents = filter(lambda p: issubclass(p, Entity), parents)
+        parents = parents[: parents.index(Entity) + 1]
+        # 2. Get the service_builder from each parent
+        parents = filter(lambda p: hasattr(p, "Meta"), parents)
+        parents = filter(lambda p: hasattr(p.Meta, "service"), parents)
+        parent_service_builders = map(lambda p: p.Meta.router, parents)
+        # 3. Assign them to self.parent_service_builders
+        self.parent_service_builders.update(parent_service_builders)
+
         for servicemethod in self.servicemethods(entity_class):
             # make sure the methods are static or class methods
             if not inspect_mate_pp.is_class_method(
@@ -130,9 +151,13 @@ class ServiceBuilder:
     def start_interval_servicemethod_scheduler(self, entity_class: type[Entity]):
         for servicemethod in self.all_interval_servicemethods(entity_class):
             servicemethod.__servicemethod_meta__.last_executed = datetime.now()
-            App.CURRENT_APP.scheduler.cyclic(
+            job = App.CURRENT_APP.scheduler.cyclic(
                 servicemethod.__servicemethod_meta__.interval, servicemethod
             )
+            servicemethod.__servicemethod_meta__.scheduler_job = job
 
     def stop_interval_servicemethod_scheduler(self, entity_class: type[Entity]):
-        ...
+        for servicemethod in self.all_interval_servicemethods(entity_class):
+            App.CURRENT_APP.scheduler.delete_job(
+                servicemethod.__servicemethod_meta__.scheduler_job
+            )

@@ -138,7 +138,7 @@ class RouterBuilder(Generic[T], BaseModel):
     router: APIRouter = Field(None, init=False)
 
     def build_router(self, entity_class: type[T], prefix: str = None) -> APIRouter:
-        """Should be called by Entity.__init_subclass__ to build a router for the subclass."""
+        """Builds a router for the subclass."""
 
         # Get all parent routers from the entity_class.Meta.parent and assign them to self.parent_routers
         # This way the router will inherit all the routes from the parent routers
@@ -147,6 +147,8 @@ class RouterBuilder(Generic[T], BaseModel):
         parents = filter(lambda p: issubclass(p, Entity), parents)
         parents = parents[: parents.index(Entity) + 1]
         # 2. Get the router from each parent
+        parents = filter(lambda p: hasattr(p, "Meta"), parents)
+        parents = filter(lambda p: hasattr(p.Meta, "router"), parents)
         parent_routers = map(lambda p: p.Meta.router, parents)
         # 3. Assign them to self.parent_routers
         self.parent_routers.update(parent_routers)

@@ -1,21 +1,25 @@
 from __future__ import annotations
-from contextlib import contextmanager
-from typing import Generator
-from fastapi import FastAPI
-from pydantic import Field
-from sqlalchemy.future.engine import Engine
 
-from scheduler import Scheduler
+from contextlib import asynccontextmanager, contextmanager
+from typing import Generator
+
+from sqlalchemy.future.engine import Engine
 from sqlmodel import SQLModel, Session, create_engine
+from pydantic import Field
+from fastapi import FastAPI
+from scheduler import Scheduler
 
 from object_api.entity import Entity
+from object_api.request_context import RequestContextMiddleware, get_request_id
 from object_api.utils.has_post_init import HasPostInitMixin
 
 
 class App(FastAPI, HasPostInitMixin):
     CURRENT_APP: App = Field(None, init=False)
 
-    scheduler: Scheduler = Field(default_factory=Scheduler, init=False)
+    scheduler: Scheduler = Field(
+        default_factory=lambda: Scheduler(n_threads=0), init=False
+    )
     entity_classes: list[type[Entity]] = Field([], init=False)
     db_engine: Engine = Field(None, init=False)
     debug: bool = True
@@ -30,6 +34,7 @@ class App(FastAPI, HasPostInitMixin):
             )
         self.CURRENT_APP = self
 
+        self.add_middleware(RequestContextMiddleware)
         self.build()
 
         return super().__post_init__()
@@ -50,25 +55,45 @@ class App(FastAPI, HasPostInitMixin):
         for entity_class in self.entity_classes:
             entity_class.Meta.router.build_router(entity_class)
 
-    _object_api_app_active_session: Session = Field(None, init=False)
+    # The servicemethods will just have to manually pass the session to their invoked service methods
+    _per_thread_active_session: dict[str, Session] = Field(None, init=False)
 
-    @contextmanager
+    @asynccontextmanager
     async def session(self) -> Generator[None, None, None]:
-        if self._object_api_app_active_session:
-            if not self._object_api_app_active_session.is_active:
-                raise RuntimeError(
-                    "Session is already closed. Please use a new session for each request."
-                )
+        """Returns (and possibly creates) a session for the current req-response cycle
+        or returns a globally shared session if no request context is available."""
+        req_id = get_request_id() or "global"
 
-            yield self._object_api_app_active_session
+        # maybe create or re-initialize the session if its non-existent or inactive
+        if (
+            req_id not in self._per_thread_active_session
+            or not self._per_thread_active_session[req_id]
+            or not self._per_thread_active_session[req_id].is_active
+        ):
+            self._per_thread_active_session[req_id] = Session(self.db_engine)
+
+        # now enter the session context or just yield the session if it's already active
+        if self._per_thread_active_session[req_id].is_active:
+            yield self._per_thread_active_session[req_id]
+            return
+        else:
+            with self._per_thread_active_session[req_id] as session:
+                yield session
+            # make sure to clean up the session after the request is done
+            del self._per_thread_active_session[req_id]
             return
 
-        with Session(self.db_engine) as session:
-            self._object_api_app_active_session = session
-            yield session
-            self._object_api_app_active_session = None
+    @asynccontextmanager
+    @staticmethod
+    async def current_session() -> Generator[Session, None, None]:
+        if not App.CURRENT_APP:
+            raise RuntimeError(
+                "No current app. Please use App.as_current() to set the current app."
+            )
 
-    @contextmanager
+        yield App.CURRENT_APP.session()
+
+    @asynccontextmanager
     async def as_current(self) -> Generator[App, None, None]:
         old_app = self.CURRENT_APP
         self.CURRENT_APP = self
